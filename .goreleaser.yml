@@ -2,28 +2,6 @@ version: 2
 env:
   - CGO_ENABLED=1
 builds:
-  - id: linux-amd64
-    main: ./
-    binary: parca-agent
-    goos:
-      - linux
-    goarch:
-      - amd64
-    env:
-      - CC=x86_64-linux-gnu-gcc	
-      - CXX=x86_64-linux-gnu-g++
-    flags:
-      - -mod=readonly
-      - -trimpath
-      - -v
-    ldflags:
-      # https://goreleaser.com/customization/build/#reproducible-builds
-      # {{.CommitDate}} is the date of the commit to make builds reproducible.
-      - -X main.version={{.Version}} -X main.commit={{.FullCommit}} -X main.date={{.CommitDate}} -X main.goArch=amd64
-      - -extldflags=-static
-    tags:
-      - osusergo
-      - netgo
   - id: linux-arm64
     main: ./
     binary: parca-agent
@@ -79,19 +57,6 @@ release:
   draft: false
   name_template: '{{ .Tag }}'
 dockers:
-- image_templates: ["ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}-amd64"]
-  dockerfile: Dockerfile
-  use: buildx
-  build_flag_templates:
-  - --pull
-  - --platform=linux/amd64
-  - --label=org.opencontainers.image.title={{ .ProjectName }}
-  - --label=org.opencontainers.image.description={{ .ProjectName }}
-  - --label=org.opencontainers.image.url=https://parca.dev/
-  - --label=org.opencontainers.image.source=https://github.com/parca-dev/{{ .ProjectName }}
-  - --label=org.opencontainers.image.version={{ .Tag }}
-  - --label=org.opencontainers.image.revision={{ .FullCommit }}
-  - --label=org.opencontainers.image.licenses=Apache-2.0
 - image_templates: ["ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}-arm64"]
   goarch: arm64
   dockerfile: Dockerfile
@@ -109,9 +74,7 @@ dockers:
 docker_manifests:
 - name_template: ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}
   image_templates:
-  - ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}-amd64
   - ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}-arm64
 - name_template: ghcr.io/parca-dev/{{ .ProjectName }}:latest
   image_templates:
-  - ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}-amd64
   - ghcr.io/parca-dev/{{ .ProjectName }}:{{ .Tag }}-arm64
