@@ -123,6 +123,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/procfs v0.16.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/consumer v1.30.0 // indirect
@@ -156,4 +157,4 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/parca-dev/opentelemetry-ebpf-profiler v0.0.0-20250410225804-edfa6253a8b2
+replace go.opentelemetry.io/ebpf-profiler => github.com/zmj64351508/opentelemetry-ebpf-profiler v0.0.0-20250506092552-99aa823ecd89
