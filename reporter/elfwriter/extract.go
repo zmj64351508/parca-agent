@@ -30,6 +30,9 @@ func OnlyKeepDebug(dst io.WriteSeeker, src ReadAtCloser) error {
 		func(s *elf.Section) bool {
 			return s.Type == elf.SHT_NOTE
 		},
+		func(s *elf.Section) bool {
+			return s.Name == ".gnu_debugdata"
+		},
 	)
 
 	if err := w.Flush(); err != nil {
