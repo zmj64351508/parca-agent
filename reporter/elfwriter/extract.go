@@ -27,6 +27,9 @@ func OnlyKeepDebug(dst *os.File, src process.ReadAtCloser) error {
 		func(s *elf.Section) bool {
 			return s.Type == elf.SHT_NOTE
 		},
+		func(s *elf.Section) bool {
+			return s.Name == ".gnu_debugdata"
+		},
 	)
 
 	if err := w.Flush(); err != nil {
