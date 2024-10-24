@@ -1,6 +1,7 @@
 version: 2
 env:
   - CGO_ENABLED=1
+  - GOPROXY=https://mirrors.aliyun.com/goproxy/,direct
 builds:
   - id: linux-arm64
     main: ./
