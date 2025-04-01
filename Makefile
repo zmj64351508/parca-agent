@@ -2,6 +2,11 @@
 
 all: crossbuild
 
+GIT_COMMIT_ID := $(shell git rev-parse HEAD)
+GIT_COMMIT_DATE := $(shell git show -s --format=%cd --date=iso-strict HEAD)
+build-android:
+	CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ GOOS=linux GOARCH=arm64 go build -o parca-agent -buildvcs=false -ldflags="-extldflags=-static -X main.commit=${GIT_COMMIT_ID} -X main.date=${GIT_COMMIT_DATE} -X main.goArch=arm64" -tags osusergo,netgo,debugtracer
+
 crossbuild:
 	DOCKER_CLI_EXPERIMENTAL="enabled" docker run \
 		--rm \
