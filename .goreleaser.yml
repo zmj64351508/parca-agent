@@ -14,7 +14,6 @@ builds:
       - CC=aarch64-linux-gnu-gcc
       - CXX=aarch64-linux-gnu-g++
     flags:
-      - -mod=readonly
       - -trimpath
       - -v
     ldflags:
@@ -25,6 +24,7 @@ builds:
     tags:
       - osusergo
       - netgo
+      - debugtracer
 archives:
   - name_template: >-
       {{ .ProjectName }}_
