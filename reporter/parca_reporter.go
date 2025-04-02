@@ -356,6 +356,13 @@ func (r *ParcaReporter) ExecutableMetadata(args *reporter.ExecutableMetadataArgs
 	ef, err := elf.NewFile(f)
 	if err != nil {
 		log.Debugf("Failed to open ELF file %s: %v", args.FileName, err)
+		r.executables.Add(args.FileID, metadata.ExecInfo{
+			FileName: args.FileName,
+			BuildID:  "Invalid ELF",
+			Compiler: "Invalid ELF",
+			Static:   false,
+			Stripped: false,
+		})
 		return
 	}
 
