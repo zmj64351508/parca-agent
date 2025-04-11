@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	lru "github.com/elastic/go-freelru"
-	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"github.com/prometheus/prometheus/model/labels"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
 )
 
 var ErrFileParse = errors.New("Error Parsing File")
@@ -175,7 +175,9 @@ func (p *mainExecutableMetadataProvider) AddMetadata(
 	fileID, err := process(pid).readMainExecutableFileID()
 	if err != nil {
 		log.Debugf("Failed to get fileID for PID %d: %v", pid, err)
-		cacheable = false
+		// This failure may due to kernel threads or deleted executables. In these 2 cases, it's
+		// safe to cache the metadata without executable info that can improve performance.
+		return true
 	}
 	lb.Set("__meta_process_executable_file_id", fileID.StringNoQuotes())
 
@@ -216,14 +218,6 @@ func (pmp *processMetadataProvider) AddMetadata(pid libpf.PID, lb *labels.Builde
 		lb.Set("__meta_process_cmdline", strings.Join(cmdline, " "))
 	}
 
-	comm, err := p.comm()
-	if err != nil {
-		log.Debugf("Failed to get comm for PID %d: %v", pid, err)
-		cache = false
-	} else {
-		lb.Set("comm", comm)
-	}
-
 	cgroup, err := p.cgroup()
 	if err != nil {
 		log.Debugf("Failed to get cgroups for PID %d: %v", pid, err)
@@ -238,6 +232,7 @@ func (pmp *processMetadataProvider) AddMetadata(pid libpf.PID, lb *labels.Builde
 		cache = false
 	} else {
 		lb.Set("__meta_process_ppid", strconv.Itoa(stat.PPID))
+		lb.Set("comm", stat.Comm)
 	}
 
 	return cache
