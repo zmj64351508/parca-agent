@@ -4,12 +4,7 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    tags:
-      - v*
-    branches:
-      - '**'
-
+      
 jobs:
   artifacts:
     name: Goreleaser release
