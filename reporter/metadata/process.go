@@ -203,6 +203,14 @@ func NewProcessMetadataProvider() MetadataProvider {
 	return &processMetadataProvider{}
 }
 
+func shortCmdline(cmdline []string) string {
+	if len(cmdline) == 0 {
+		return ""
+	}
+	program := cmdline[0]
+	return filepath.Base(program)
+}
+
 // AddMetadata adds metadata labels for a process to the given labels.Builder.
 func (pmp *processMetadataProvider) AddMetadata(pid libpf.PID, lb *labels.Builder) bool {
 	cache := true
@@ -216,6 +224,7 @@ func (pmp *processMetadataProvider) AddMetadata(pid libpf.PID, lb *labels.Builde
 		cache = false
 	} else {
 		lb.Set("__meta_process_cmdline", strings.Join(cmdline, " "))
+		lb.Set("__meta_process_short_cmdline", shortCmdline(cmdline))
 	}
 
 	cgroup, err := p.cgroup()
