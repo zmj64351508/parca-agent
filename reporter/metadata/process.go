@@ -227,12 +227,28 @@ func (pmp *processMetadataProvider) AddMetadata(pid libpf.PID, lb *labels.Builde
 		lb.Set("__meta_process_short_cmdline", shortCmdline(cmdline))
 	}
 
-	cgroup, err := p.cgroup()
+	/*cgroup, err := p.cgroup()
 	if err != nil {
 		log.Debugf("Failed to get cgroups for PID %d: %v", pid, err)
 		cache = false
 	} else {
 		lb.Set("__meta_process_cgroup", cgroup.path)
+	}*/
+
+	// For Android only
+	cgroups, err := p.cgroups()
+	if err != nil {
+		log.Debugf("Failed to get cgroups for PID %d: %v", pid, err)
+		cache = false
+	} else {
+		for _, cgroup := range cgroups {
+			if cgroup.hierarchyID == 0 {
+				continue
+			}
+			if len(cgroup.controllers) == 1 {
+				lb.Set("__meta_process_cgroup_"+cgroup.controllers[0], cgroup.path)
+			}
+		}
 	}
 
 	stat, err := p.stat()
@@ -261,6 +277,18 @@ func (p process) cgroup() (cgroup, error) {
 	}
 
 	return findContainerGroup(cgroups), nil
+}
+
+func (p process) cgroups() ([]cgroup, error) {
+	data, err := readFileNoStat(p.path("cgroup"))
+	if err != nil {
+		return []cgroup{}, err
+	}
+	cgroups, err := parseCgroups(data)
+	if err != nil {
+		return []cgroup{}, err
+	}
+	return cgroups, nil
 }
 
 // cmdline reads from /proc/<pid>/cmdline and returns the command line arguments of this process.
