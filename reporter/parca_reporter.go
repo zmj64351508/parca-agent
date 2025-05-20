@@ -96,6 +96,9 @@ type ParcaReporter struct {
 	// labels stores labels about the thread.
 	labels *lru.SyncedLRU[libpf.PID, labelRetrievalResult]
 
+	// dynamic labels
+	dynlabels *lru.SyncedLRU[uint64, labelRetrievalResult]
+
 	// frames maps frame information to its source location.
 	frames *lru.SyncedLRU[libpf.FileID, *xsync.RWMutex[map[libpf.AddressOrLineno]sourceInfo]]
 
@@ -132,6 +135,9 @@ type ParcaReporter struct {
 
 	// metadata providers
 	metadataProviders []metadata.MetadataProvider
+
+	// dynamic metadata providers
+	dynamicMetadataProviders []metadata.DynamicMetadataProvider
 
 	// Prometheus metrics registry
 	reg prometheus.Registerer
@@ -216,7 +222,7 @@ func (r *ParcaReporter) ReportTraceEvent(trace *libpf.Trace,
 		})
 	}
 
-	labelRetrievalResult := r.labelsForTID(meta.TID, meta.PID, meta.Comm, meta.CPU)
+	labelRetrievalResult := r.labelsForTID(meta)
 
 	if !labelRetrievalResult.keep {
 		log.Debugf("Skipping trace event for PID %d, as it was filtered out by relabeling", meta.PID)
@@ -278,16 +284,64 @@ func (r *ParcaReporter) addMetadataForPID(pid libpf.PID, lb *labels.Builder) boo
 	return cache
 }
 
-func (r *ParcaReporter) labelsForTID(tid, pid libpf.PID, comm string, cpu int) labelRetrievalResult {
+func (r *ParcaReporter) addDynamicMetadata(meta *samples.TraceEventMeta, lb *labels.Builder) {
+	for _, p := range r.dynamicMetadataProviders {
+		if p == nil {
+			continue
+		}
+		p.AddMetadata(meta, lb)
+	}
+}
+
+func (r *ParcaReporter) addDynamicLabelsForTIDInner(staticLabels labelRetrievalResult, dynamicLabels labelRetrievalResult) labelRetrievalResult {
+	if dynamicLabels.keep {
+		return labelRetrievalResult{
+			labels: append(staticLabels.labels, dynamicLabels.labels...),
+			keep:   staticLabels.keep,
+		}
+	} else {
+		return staticLabels
+	}
+}
+func (r *ParcaReporter) addDynamicLabelsForTID(meta *samples.TraceEventMeta, staticLabels labelRetrievalResult) labelRetrievalResult {
+	lb := &labels.Builder{}
+	lb.Set("__meta_cpu", fmt.Sprint(meta.CPU))
+	r.addDynamicMetadata(meta, lb)
+	key := lb.Labels().Hash()
+	if dynamicLabels, exists := r.dynlabels.Get(key); exists {
+		return r.addDynamicLabelsForTIDInner(staticLabels, dynamicLabels)
+	}
+
+	keep := relabel.ProcessBuilder(lb, r.relabelConfigs...)
+
+	// Meta labels are deleted after relabelling. Other internal labels propagate to
+	// the target which decides whether they will be part of their label set.
+	lb.Range(func(l labels.Label) {
+		if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
+			lb.Del(l.Name)
+		}
+	})
+
+	dynamicLabels := labelRetrievalResult{
+		labels: lb.Labels(),
+		keep:   keep,
+	}
+	r.dynlabels.Add(key, dynamicLabels)
+	return r.addDynamicLabelsForTIDInner(staticLabels, dynamicLabels)
+}
+
+func (r *ParcaReporter) labelsForTID(meta *samples.TraceEventMeta) labelRetrievalResult {
+	tid := meta.TID
+	pid := meta.PID
+	comm := meta.Comm
 	if labels, exists := r.labels.Get(tid); exists {
-		return labels
+		return r.addDynamicLabelsForTID(meta, labels)
 	}
 
 	lb := &labels.Builder{}
 	lb.Set("node", r.nodeName)
 	lb.Set("__meta_thread_comm", comm)
 	lb.Set("__meta_thread_id", fmt.Sprint(tid))
-	lb.Set("__meta_cpu", fmt.Sprint(cpu))
 	cacheable := r.addMetadataForPID(pid, lb)
 
 	keep := relabel.ProcessBuilder(lb, r.relabelConfigs...)
@@ -308,7 +362,7 @@ func (r *ParcaReporter) labelsForTID(tid, pid libpf.PID, comm string, cpu int) l
 	if cacheable {
 		r.labels.Add(tid, res)
 	}
-	return res
+	return r.addDynamicLabelsForTID(meta, res)
 }
 
 // ReportFramesForTrace is a NOP for ParcaReporter.
@@ -546,6 +600,11 @@ func New(
 		return nil, err
 	}
 
+	dynlabels, err := lru.NewSynced[uint64, labelRetrievalResult](cacheSize, func(key uint64) uint32 { return uint32(key) })
+	if err != nil {
+		return nil, err
+	}
+
 	stacks, err := lru.NewSynced[libpf.TraceHash, stack](cacheSize, libpf.TraceHash.Hash32)
 	if err != nil {
 		return nil, err
@@ -592,6 +651,7 @@ func New(
 		client:              nil,
 		executables:         executables,
 		labels:              labels,
+		dynlabels:           dynlabels,
 		frames:              frames,
 		sampleWriter:        NewSampleWriter(mem),
 		stacks:              stacks,
@@ -609,6 +669,7 @@ func New(
 			cmp,
 			sysMeta,
 		},
+		dynamicMetadataProviders:    []metadata.DynamicMetadataProvider{},
 		reg:                         reg,
 		otelLibraryMetrics:          make(map[string]prometheus.Metric),
 		sampleWriteRequestBytes:     sampleWriteRequestBytes,

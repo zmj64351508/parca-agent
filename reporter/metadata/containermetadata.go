@@ -46,6 +46,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/stringutil"
 )
 
@@ -100,6 +101,10 @@ type MetadataProvider interface {
 	// AddMetadata adds metadata to the provided labels.Builder for the given PID.
 	// It returns whether the metadata can be safely cached.
 	AddMetadata(pid libpf.PID, lb *labels.Builder) bool
+}
+
+type DynamicMetadataProvider interface {
+	AddMetadata(meta *samples.TraceEventMeta, lb *labels.Builder) bool
 }
 
 // containerMetadataProvider does the retrieval of container metadata for a particular pid.
