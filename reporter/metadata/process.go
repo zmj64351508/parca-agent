@@ -227,13 +227,13 @@ func (pmp *processMetadataProvider) AddMetadata(pid libpf.PID, lb *labels.Builde
 		lb.Set("__meta_process_short_cmdline", shortCmdline(cmdline))
 	}
 
-	cgroup, err := p.cgroup()
+	/*cgroup, err := p.cgroup()
 	if err != nil {
 		log.Debugf("Failed to get cgroups for PID %d: %v", pid, err)
 		cache = false
 	} else {
 		lb.Set("__meta_process_cgroup", cgroup.path)
-	}
+	}*/
 
 	stat, err := p.stat()
 	if err != nil {

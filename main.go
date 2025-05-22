@@ -398,6 +398,11 @@ func mainWithExitCode() flags.ExitCode {
 		return flags.Failure("Failed to attach scheduler monitor: %v", err)
 	}
 
+	if err := trc.AttachCgroupMonitor(); err != nil {
+		return flags.Failure("failed to attach cgroup monitor: %w", err)
+	}
+	log.Printf("Attached cgroup monitor")
+
 	// This log line is used in our system tests to verify if that the agent has started. So if you
 	// change this log line update also the system test.
 	log.Printf("Attached sched monitor")

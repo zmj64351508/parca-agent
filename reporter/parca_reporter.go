@@ -669,7 +669,9 @@ func New(
 			cmp,
 			sysMeta,
 		},
-		dynamicMetadataProviders:    []metadata.DynamicMetadataProvider{},
+		dynamicMetadataProviders: []metadata.DynamicMetadataProvider{
+			metadata.NewProcessCgroupMetadataProvider(),
+		},
 		reg:                         reg,
 		otelLibraryMetrics:          make(map[string]prometheus.Metric),
 		sampleWriteRequestBytes:     sampleWriteRequestBytes,
